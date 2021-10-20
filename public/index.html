@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Map</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="css/index.min.css" rel="stylesheet">
+</head>
+<body>
+    <div id="app" v-cloak>
+        <div id="select">
+            <el-autocomplete ref="autocomplete" class="inline-input" style="width: 100%;" v-model="select" :fetch-suggestions="querySearch" placeholder="Place enter a name" @select="handleSelect"></el-autocomplete>
+        </div>
+        <div id="googleMap"></div>
+    </div>
+</body>
+<script src="js/vue.min.js"></script>
+<script src="js/element-ui.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBVljGElVFBzoM0cBbh3aeXvxyAMqzD5Yg&language=en"></script>
+<script>
+    var app = new Vue({
+        el: "#app",
+        data: {
+            select: "",
+            dataList: [],
+            listDom: null,
+        },
+        mounted() {
+            this.loadMap();
+            var dom = document.getElementById(this.$refs.autocomplete.id);
+            this.listDom = document.getElementsByClassName("el-autocomplete-suggestion")[0];
+            this.listDom.style.display = "none";
+            dom.onmouseover = (ev) => {
+                let name = ev.target.innerText;
+                this.dataList.forEach(item => {
+                    if (item.value == name) {
+                        this.setData(item);
+                    }
+                });
+            }
+        },
+        methods: {
+            getNameSchema(name, callback) {
+                fetch('http://127.0.0.1:3300/getNameSchema', {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    method: 'post',
+                    mode: 'cors',
+                    body: JSON.stringify({ name }),
+                }).then((res) => {
+                    return res.json();
+                }).then((res) => {
+                    callback(res);
+                });
+            },
+            querySearch(name, callback) {
+                if (name == "") {
+                    this.listDom.style.display = "none";
+                    this.clearData();
+                } else {
+                    this.listDom.style.display = "block";
+                    this.getNameSchema(name, res => {
+                        this.dataList = res.data;
+                        callback(res.data);
+                    });
+                }
+            },
+            handleSelect(item) {
+                this.setData(item);
+            },
+            setData(item) {
+                this.clearData();
+                window.map.data.setStyle({ fillColor: "#fff", strokeWeight: 1, strokeColor: "#ff1515" });
+                window.map.data.addGeoJson(item.geometry);
+                window.map.panTo(new google.maps.LatLng(item.latlng[0], item.latlng[1]));
+            },
+            clearData(){
+                window.map.data.forEach(feature => {
+                    map.data.remove(feature);
+                });
+            },
+            loadMap() {
+                google.maps.event.addDomListener(window, 'load', () => {
+                    var mapProp = {
+                        center: new google.maps.LatLng(39.76523604199232, -101.3427476648349),
+                        minZoom: 5,
+                        zoom: 5,
+                        mapTypeId: "roadmap",
+                        disableDefaultUI: false,
+                        zoomControl: true,
+                    };
+                    window.map = new google.maps.Map(document.getElementById("googleMap"), mapProp);
+                });
+            },
+        },
+    });
+</script>
+</html>
